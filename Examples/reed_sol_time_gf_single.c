@@ -44,18 +44,17 @@
    Revision 1.0 - 2007: James S. Plank.
  */
 
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <gf_complete.h>
-#include <gf_method.h>
 #include <gf_rand.h>
+#include <gf_method.h>
 #include <stdint.h>
-#include <sys/time.h>
 #include "jerasure.h"
 #include "reed_sol.h"
-
-#define BUFSIZE 4096
+#include "timing.h"
 
 static void *malloc16(int size) {
     void *mem = malloc(size+16+sizeof(void*));
@@ -75,15 +74,15 @@ static void free16(void *ptr) {
 
 static void usage(char *s)
 {
-  fprintf(stderr, "usage: reed_sol_test_gf k m w seed (additional GF args) - Tests Reed-Solomon in GF(2^w).\n");
+  fprintf(stderr, "usage: reed_sol_time_gf k m w seed iterations bufsize (additional GF args) - Test and time Reed-Solomon in a particular GF(2^w).\n");
   fprintf(stderr, "       \n");
   fprintf(stderr, "       w must be 8, 16 or 32.  k+m must be <= 2^w.\n");
   fprintf(stderr, "       See the README for information on the additional GF args.\n");
   fprintf(stderr, "       Set up a Vandermonde-based distribution matrix and encodes k devices of\n");
-  fprintf(stderr, "       %d bytes each with it.  Then it decodes.\n", BUFSIZE);
+  fprintf(stderr, "       bufsize bytes each with it.  Then it decodes.\n");
   fprintf(stderr, "       \n");
-  fprintf(stderr, "This tests:        jerasure_matrix_encode()\n");
-  fprintf(stderr, "                   jerasure_matrix_decode()\n");
+  fprintf(stderr, "This tests:        jerasure_matrix_encode_single_thread()\n");
+  fprintf(stderr, "                   jerasure_matrix_decode_single_thread()\n");
   fprintf(stderr, "                   jerasure_print_matrix()\n");
   fprintf(stderr, "                   galois_change_technique()\n");
   fprintf(stderr, "                   reed_sol_vandermonde_coding_matrix()\n");
@@ -103,23 +102,26 @@ gf_t* get_gf(int w, int argc, char **argv, int starting)
 
 int main(int argc, char **argv)
 {
-  int k, w, i, m;
+  int k, w, i, m, iterations, bufsize;
   int *matrix;
   char **data, **coding, **old_values;
   int *erasures, *erased;
-  gf_t *gf = NULL;
   uint32_t seed;
+  double t = 0, total_time = 0;
+  gf_t *gf = NULL;
 
-  if (argc < 6) usage("Not enough command line arguments");
+  if (argc < 8) usage(NULL);
   if (sscanf(argv[1], "%d", &k) == 0 || k <= 0) usage("Bad k");
   if (sscanf(argv[2], "%d", &m) == 0 || m <= 0) usage("Bad m");
   if (sscanf(argv[3], "%d", &w) == 0 || (w != 8 && w != 16 && w != 32)) usage("Bad w");
   if (sscanf(argv[4], "%d", &seed) == 0) usage("Bad seed");
+  if (sscanf(argv[5], "%d", &iterations) == 0) usage("Bad iterations");
+  if (sscanf(argv[6], "%d", &bufsize) == 0) usage("Bad bufsize");
   if (w <= 16 && k + m > (1 << w)) usage("k + m is too big");
 
   MOA_Seed(seed);
 
-  gf = get_gf(w, argc, argv, 5);
+  gf = get_gf(w, argc, argv, 7);
 
   if (gf == NULL) {
     usage("Invalid arguments given for GF!\n");
@@ -129,10 +131,10 @@ int main(int argc, char **argv)
 
   matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
 
-  printf("<HTML><TITLE>reed_sol_test_gf");
+  printf("<HTML><TITLE>reed_sol_time_gf");
   for (i = 1; i < argc; i++) printf(" %s", argv[i]);
   printf("</TITLE>\n");
-  printf("<h3>reed_sol_test_gf");
+  printf("<h3>reed_sol_time_gf");
   for (i = 1; i < argc; i++) printf(" %s", argv[i]);
   printf("</h3>\n");
   printf("<pre>\n");
@@ -143,49 +145,62 @@ int main(int argc, char **argv)
 
   data = talloc(char *, k);
   for (i = 0; i < k; i++) {
-    data[i] = talloc(char, BUFSIZE);
-    MOA_Fill_Random_Region(data[i], BUFSIZE);
+    data[i] = talloc(char, bufsize);
+    MOA_Fill_Random_Region(data[i], bufsize);
   }
 
   coding = talloc(char *, m);
   old_values = talloc(char *, m);
   for (i = 0; i < m; i++) {
-    coding[i] = talloc(char, BUFSIZE);
-    old_values[i] = talloc(char, BUFSIZE);
+    coding[i] = talloc(char, bufsize);
+    old_values[i] = talloc(char, bufsize);
   }
 
-  jerasure_matrix_encode(k, m, w, matrix, data, coding, BUFSIZE);
+  for (i = 0; i < iterations; i++) {
+    t = timing_now();
+    //houyx
+    jerasure_matrix_encode_single_thread(k, m, w, matrix, data, coding, bufsize);
+    total_time += timing_now() - t;
+  }
+
+  printf("Encode throughput for %d iterations: %.2f MB/s (%.2f sec)\n", iterations, (double)(k*iterations*bufsize/1024/1024) / total_time, total_time);
 
   erasures = talloc(int, (m+1));
   erased = talloc(int, (k+m));
   for (i = 0; i < m+k; i++) erased[i] = 0;
   for (i = 0; i < m; ) {
-    erasures[i] = ((unsigned int)MOA_Random_W(w,1))%(k+m);
+    erasures[i] = ((unsigned int)MOA_Random_W(w, 1))%(k+m);
     if (erased[erasures[i]] == 0) {
       erased[erasures[i]] = 1;
-      memcpy(old_values[i], (erasures[i] < k) ? data[erasures[i]] : coding[erasures[i]-k], BUFSIZE);
-      bzero((erasures[i] < k) ? data[erasures[i]] : coding[erasures[i]-k], BUFSIZE);
+      memcpy(old_values[i], (erasures[i] < k) ? data[erasures[i]] : coding[erasures[i]-k], bufsize);
+      bzero((erasures[i] < k) ? data[erasures[i]] : coding[erasures[i]-k], bufsize);
       i++;
     }
   }
   erasures[i] = -1;
 
-  i = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data, coding, BUFSIZE);
+  for (i = 0; i < iterations; i++) {
+    t = timing_now();
+    //houyx
+    jerasure_matrix_decode_single_thread(k, m, w, matrix, 1, erasures, data, coding, bufsize);
+    total_time += timing_now() - t;
+  }
+
+  printf("Decode throughput for %d iterations: %.2f MB/s (%.2f sec)\n", iterations, (double)(k*iterations*bufsize/1024/1024) / total_time, total_time);
 
   for (i = 0; i < m; i++) {
     if (erasures[i] < k) {
-      if (memcmp(data[erasures[i]], old_values[i], BUFSIZE)) {
+      if (memcmp(data[erasures[i]], old_values[i], bufsize)) {
         fprintf(stderr, "Decoding failed for %d!\n", erasures[i]);
         exit(1);
       }
     } else {
-      if (memcmp(coding[erasures[i]-k], old_values[i], BUFSIZE)) {
+      if (memcmp(coding[erasures[i]-k], old_values[i], bufsize)) {
         fprintf(stderr, "Decoding failed for %d!\n", erasures[i]);
         exit(1);
       }
     }
   }
 
-  printf("Encoding and decoding were both successful.\n");
   return 0;
 }

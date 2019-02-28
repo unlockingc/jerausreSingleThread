@@ -23,9 +23,13 @@ bin_PROGRAMS = jerasure_01 \
                cauchy_04 \
                liberation_01 \
                encoder \
-               decoder
+               decoder \
+               encoder_single \
+               decoder_single \
+               reed_sol_time_gf_single
 
-check_PROGRAMS = 
+
+check_PROGRAMS =
 
 TESTS=test_all_gfs.sh encode_decode.sh $(check_PROGRAMS)
 
@@ -50,6 +54,7 @@ reed_sol_04_SOURCES = reed_sol_04.c
 
 reed_sol_test_gf_SOURCES = reed_sol_test_gf.c
 reed_sol_time_gf_SOURCES = reed_sol_time_gf.c
+reed_sol_time_gf_single_SOURCES = reed_sol_time_gf_single.c
 
 cauchy_01_SOURCES = cauchy_01.c
 cauchy_02_SOURCES = cauchy_02.c
@@ -60,8 +65,16 @@ liberation_01_SOURCES = liberation_01.c
 
 decoder_SOURCES = decoder.c
 encoder_SOURCES = encoder.c
+# houyx
+decoder_single_SOURCES = decoder_single.c
+encoder_single_SOURCES = encoder_single.c
 
 LDADD = ../src/libJerasure.la
 decoder_LDADD = $(LDADD) ../src/libtiming.a
 encoder_LDADD = $(LDADD) ../src/libtiming.a
+# houyx
+decoder_single_LDADD = $(LDADD) ../src/libtiming.a
+encoder_single_LDADD = $(LDADD) ../src/libtiming.a
+reed_sol_time_gf_single_LDADD = $(LDADD) ../src/libtiming.a
+
 reed_sol_time_gf_LDADD = $(LDADD) ../src/libtiming.a

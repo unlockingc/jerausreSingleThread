@@ -17,5 +17,8 @@
 trap "rm -fr T Coding"  EXIT
 
 dd if=/dev/urandom of=T bs=4096 count=1
-./encoder T 3 2 reed_sol_van 8 0  0
+./encoder T 4 2 reed_sol_van 8 0  0
 ./decoder T
+#houyx
+./encoder_single testData.txt 4 2 reed_sol_van 8 0  0
+./decoder_single testData.txt

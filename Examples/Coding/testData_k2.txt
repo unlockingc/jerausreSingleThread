@@ -1,0 +1,5 @@
+ntegrated circuit (ASIC). Circuit diagrams were previously used to specify the configuration, but this is increasingly rare due to the advent of electronic design automation tools.
+
+
+A Spartan FPGA from Xilinx
+FPGAs contain an array of programmable logic blocks, and a hierarchy of reconfigurable interconnects that allo
