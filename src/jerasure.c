@@ -230,6 +230,32 @@ int jerasure_matrix_decode(int k, int m, int w, int *matrix, int row_k_ones, int
     }
   }
 
+  fprintf(stderr, "decoding_matrix_for_output ready to gen\n" );
+
+  int * decoding_matrix_for_output, * dm_ids_for_output;
+  dm_ids_for_output = talloc(int, k);
+  decoding_matrix_for_output = talloc(int, k*k);
+
+  fprintf(stderr, "decoding_matrix_for_output alloced\n" );
+
+  if (jerasure_make_decoding_matrix(k, m, w, matrix, erased, decoding_matrix_for_output, dm_ids_for_output) < 0) {
+      free(decoding_matrix_for_output);
+      fprintf(stderr, "decoding_matrix_for_output gen failed\n" );
+      return -1;
+    }
+
+  int broken_num = 0, tt = 0;
+  for( tt =0; tt < k + m; tt ++ )
+  {
+    if(erased[tt])
+    {
+      broken_num ++;
+    }
+  }
+
+  fprintf(stderr, "decoding_matrix_for_output gened\n" );
+  outputMatrix( k, broken_num, decoding_matrix_for_output, "Coding/decoding_matrix.txt" );
+
   /* Decode the data drives.
      If row_k_ones is true and coding device 0 is intact, then only decode edd-1 drives.
      This is done by stopping at lastdrive.
@@ -273,6 +299,33 @@ int jerasure_matrix_decode(int k, int m, int w, int *matrix, int row_k_ones, int
   if (decoding_matrix != NULL) free(decoding_matrix);
 
   return 0;
+}
+
+void outputMatrix( int k, int m, int *mat, const char * fileName )
+{
+  /* 新建一个bin文件 */
+    FILE *fw = fopen(fileName, "w");
+    if (fw == NULL)
+    {
+      fprintf(stderr, "Matrix output File init failed\n");
+        return;
+  }
+    /* 将数值写入到bin文件中 */
+    fprintf(fw, "%d", k );
+    fprintf(fw, "%d", m );
+    //fprintf(fw, "%ld", dataSize);
+
+    int i,j;
+    for (i = 0; i < m; i++)
+    {
+      for( j = 0; j < k; j++ )
+      {
+        fprintf(fw, "%d", *(mat+i*k+j) );
+      }
+        //fwrite(mat+i*k+j, sizeof(int), 1, fw);
+    }
+
+    fclose(fw);
 }
 
 
@@ -319,6 +372,7 @@ int jerasure_matrix_decode_single_thread(int k, int m, int w, int *matrix, int r
   decoding_matrix = NULL;
 
   if (edd > 1 || (edd > 0 && (!row_k_ones || erased[k]))) {
+    fprintf(stderr, "decoding_matrix need to be gen\n" );
     dm_ids = talloc(int, k);
     if (dm_ids == NULL) {
       free(erased);
@@ -333,12 +387,40 @@ int jerasure_matrix_decode_single_thread(int k, int m, int w, int *matrix, int r
     }
 
     if (jerasure_make_decoding_matrix(k, m, w, matrix, erased, decoding_matrix, dm_ids) < 0) {
+      fprintf(stderr, "decoding_matrix gen failed\n" );
       free(erased);
       free(dm_ids);
       free(decoding_matrix);
       return -1;
     }
   }
+
+  fprintf(stderr, "decoding_matrix_for_output ready to gen\n" );
+
+  int * decoding_matrix_for_output, * dm_ids_for_output;
+  dm_ids_for_output = talloc(int, k);
+  decoding_matrix_for_output = talloc(int, k*k);
+
+  fprintf(stderr, "decoding_matrix_for_output alloced\n" );
+
+  if (jerasure_make_decoding_matrix(k, m, w, matrix, erased, decoding_matrix_for_output, dm_ids_for_output) < 0) {
+      free(decoding_matrix_for_output);
+      fprintf(stderr, "decoding_matrix_for_output gen failed\n" );
+      return -1;
+    }
+
+  int broken_num = 0, tt = 0;
+  for( tt =0; tt < k + m; tt ++ )
+  {
+    if(erased[tt])
+    {
+      broken_num ++;
+    }
+  }
+
+  fprintf(stderr, "decoding_matrix_for_output gened\n" );
+  outputMatrix( k, broken_num, decoding_matrix_for_output, "Coding/decoding_matrix.txt" );
+
 
   //houyx
   // printf( "decode matrix is:==========================\n" );

@@ -88,6 +88,34 @@ int readins, n;
 /* Function prototype */
 void ctrl_bs_handler(int dummy);
 
+
+void outputMatrix( int k, int m, int *mat, const char * fileName )
+{
+	/* 新建一个bin文件 */
+    FILE *fw = fopen(fileName, "w");
+    if (fw == NULL)
+    {
+    	fprintf(stderr, "Matrix output File init failed\n");
+        return;
+	}
+    /* 将数值写入到bin文件中 */
+    fprintf(fw, "%d", k );
+    fprintf(fw, "%d", m );
+    //fprintf(fw, "%ld", dataSize);
+
+    int i,j;
+    for (i = 0; i < m; i++)
+    {
+    	for( j = 0; j < k; j++ )
+    	{
+    		fprintf(fw, "%d", *(mat+i*k+j) );
+    	}
+        //fwrite(mat+i*k+j, sizeof(int), 1, fw);
+    }
+
+    fclose(fw);
+}
+
 int main (int argc, char **argv) {
 	FILE *fp;				// File pointer
 
@@ -226,6 +254,7 @@ int main (int argc, char **argv) {
 			break;
 		case Reed_Sol_Van:
 			matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
+			outputMatrix( k, m, matrix, "Coding/coding_matrix.txt" );
 			break;
 		case Reed_Sol_R6_Op:
 			matrix = reed_sol_r6_coding_matrix(k, w);
