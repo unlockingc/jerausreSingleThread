@@ -311,8 +311,8 @@ void outputMatrix( int k, int m, int *mat, const char * fileName )
         return;
   }
     /* 将数值写入到bin文件中 */
-    fprintf(fw, "%d", k );
-    fprintf(fw, "%d", m );
+    fprintf(fw, "%d ", k );
+    fprintf(fw, "%d ", m );
     //fprintf(fw, "%ld", dataSize);
 
     int i,j;
@@ -320,7 +320,7 @@ void outputMatrix( int k, int m, int *mat, const char * fileName )
     {
       for( j = 0; j < k; j++ )
       {
-        fprintf(fw, "%d", *(mat+i*k+j) );
+        fprintf(fw, "%d ", *(mat+i*k+j) );
       }
         //fwrite(mat+i*k+j, sizeof(int), 1, fw);
     }
