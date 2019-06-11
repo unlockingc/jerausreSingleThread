@@ -1,5 +1,5 @@
 #! /bin/bash
-if [ ! -d "DeletePart" ]; then
+if [ ! -f "DeletePart" ]; then
   mkdir DeletePart
 fi
 
@@ -21,4 +21,4 @@ mv Coding/${dataPrefix}_${partToDelete1} DeletePart/
 mv Coding/${dataPrefix}_${partToDelete2} DeletePart/
 
 ./decoder $1
-./dataPreprocess.py ${dataPrefix}
+python3 ./dataPreprocess.py ${dataPrefix}
