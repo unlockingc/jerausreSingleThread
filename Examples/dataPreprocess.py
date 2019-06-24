@@ -69,19 +69,23 @@ if __name__=='__main__':
     m = uint8(mat[1])
     print(k)
 
-    mfb.write(k)
     mfb.write(m)
+    mfb.write(k)
+    mfb.write(bytes(8-2))
+    print("dataSize: {}".format(dataSize))
     mfb.write(int64(dataSize))
-    mfb.write(bytes(32-2-8))
-    dmfb.write(k)
+    mfb.write(bytes(32-8-8))
+
     dmfb.write(m)
+    dmfb.write(k)
+    dmfb.write(bytes(8-2))
     dmfb.write(int64(dataSize))
-    dmfb.write(bytes(32-2-8))
+    dmfb.write(bytes(32-8-8))
 
     for i in range(0,m):
         for j in range(0, k):
-            mfb.write(uint8(mat[i*m + j + 2]))
-            dmfb.write(uint8(dmat[i*m + j + 2]))
+            mfb.write(uint8(mat[i*k + j + 2]))
+            dmfb.write(uint8(dmat[i*k + j + 2]))
         mfb.write(bytes(32-k))
         dmfb.write(bytes(32-k))
     mf.close()
